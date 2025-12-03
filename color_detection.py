@@ -4,6 +4,7 @@ from picamera2 import Picamera2
 from gpiozero import Servo
 from RPi import GPIO
 import numpy as np
+import pigpio
 
 
 # Feedback control 
@@ -28,18 +29,47 @@ def adjustPanTilt(error_x, error_y):
 
     # panServo.value += 0
     # tiltServo.value = adjust_y
-    tilt_pwm.ChangeDutyCycle(new_y_duty)
+    # tilt_pwm.ChangeDutyCycle(new_y_duty)
 
     return 0
 
 
+def PIGPIOadjustPanTilt(error_x, error_y):
+    adjust_x = 0
+    # adjust_y = tiltServo.value + (error_y / -480)
+    new_y_width = servos.get_servo_pulsewidth(TILT_PIN) + (error_y / -480)
+
+    # if adjust_x > 1: adjust_x = 1
+    # if adjust_x < -1: adjust_x = -1
+    # if adjust_y > 0: adjust_y = 0,,,,
+    # if adjust_y < -1: adjust_y = -1
+
+    if new_y_width < MIN_WIDTH: new_y_width = MIN_WIDTH
+    if new_y_width > MAX_WIDTH: new_y_width = MAX_WIDTH
+
+    servos.set_servo_pulsewidth(TILT_PIN, new_y_width)
+
+
+    # panServo.value += 0
+    # tiltServo.value = adjust_y
+    # tilt_pwm.ChangeDutyCycle(new_y_width)
+
+    return 0
+
 pi = Picamera2()
+servos = pigpio.pi()     
 
 # panServo = Servo(19, min_pulse_width=0.0005, max_pulse_width=0.0025)
 # tiltServo = Servo(13, min_pulse_width=0.0005, max_pulse_width=0.0025)
 
 MAX_DUTY_CYLE = 12.5
 MIN_DUTY_CYCLE = 2.5
+MIN_WIDTH = 500
+MAX_WIDTH = 2500
+PAN_PIN = 19
+TILT_PIN = 13
+
+servos.set_mode(PAN_PIN, pigpio.OUTPUT)   # Set the pin as an output
 
 
 # Color range
@@ -58,8 +88,8 @@ middle_y = 240
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(13, GPIO.OUT)
 
-tilt_pwm = GPIO.PWM(13, 50)  # 50 Hz servo
-tilt_pwm.start(7)          # 7.5% duty = center
+#N tilt_pwm = GPIO.PWM(13, 50)  # 50 Hz servo
+# tilt_pwm.start(7)          # 7.5% duty = center
 
 current_y_duty = 7
 
@@ -103,10 +133,10 @@ try:
             error_x = middle_x - cx
             error_y = middle_y - cy
 
-            print(current_y_duty)
+            # print(current_y_duty)
 
             print("Error: (%d, %d)" % (error_x, error_y))
-            adjustPanTilt(error_x, error_y)
+            PIGPIOadjustPanTilt(error_x, error_y)
 
 
         else:
