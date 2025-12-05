@@ -23,10 +23,14 @@ if [ -d "$NODE/device/consumer:platform:cooling_fan/" ]; then
 fi
 
 if [ ! -d "$NODE/pwm$CHANNEL" ]; then
-	echo "0" | sudo tee -a "$NODE/export"
+	echo "$CHANNEL" | sudo tee -a "$NODE/export"
 fi
 
 echo "0" | sudo tee -a "$NODE/pwm$CHANNEL/enable" > /dev/null
+echo "1" | sudo tee -a "$NODE/pwm$CHANNEL/enable" > /dev/null
+echo "2" | sudo tee -a "$NODE/pwm$CHANNEL/enable" > /dev/null
+echo "3" | sudo tee -a "$NODE/pwm$CHANNEL/enable" > /dev/null
+
 echo "$PERIOD" | sudo tee -a "$NODE/pwm$CHANNEL/period" > /dev/null
 if [ $? -ne 0 ]; then
 	echo "^ don't worry, handling it!"

@@ -61,7 +61,7 @@ def HW_GPIO_adjust_pantilt(error_x, error_y):
     if new_y_width < MIN_WIDTH_NS: new_y_width = MIN_WIDTH_NS
     if new_y_width > MAX_WIDTH_NS: new_y_width = MAX_WIDTH_NS
 
-    subprocess.run(["/home/tamar/pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", f"{new_y_width}"], check=True, capture_output=True, text=True)
+    subprocess.run(["./pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", f"{new_y_width}"], check=True, capture_output=True, text=True)
 
     current_y_width = new_y_width
     return 0
@@ -109,7 +109,7 @@ middle_y = 240
 
 #N tilt_pwm = GPIO.PWM(13, 50)  # 50 Hz servo
 # tilt_pwm.start(7)          # 7.5% duty = center
-subprocess.run(["/home/tamar/pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", "1500000"], check=True, capture_output=True, text=True)
+subprocess.run(["./pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", "1500000"], check=True, capture_output=True, text=True)
 
 current_y_width = 150000
 
