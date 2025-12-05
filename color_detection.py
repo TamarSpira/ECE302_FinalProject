@@ -1,75 +1,94 @@
 import cv2
 import time
 from picamera2 import Picamera2
-from gpiozero import Servo
-from RPi import GPIO
 import numpy as np
-import pigpio
+import subprocess
 
 
 # Feedback control 
 # Currently is very bad
 
-def adjustPanTilt(error_x, error_y):
-    global current_y_duty
-    adjust_x = 0
-    # adjust_y = tiltServo.value + (error_y / -480)
-    new_y_duty = current_y_duty + (error_y / -480)
+# def adjustPanTilt(error_x, error_y):
+#     global current_y_duty
+#     adjust_x = 0
+#     # adjust_y = tiltServo.value + (error_y / -480)
+#     new_y_duty = current_y_duty + (error_y / -480)
 
-    # if adjust_x > 1: adjust_x = 1
-    # if adjust_x < -1: adjust_x = -1
-    # if adjust_y > 0: adjust_y = 0,,,,
-    # if adjust_y < -1: adjust_y = -1
+#     # if adjust_x > 1: adjust_x = 1
+#     # if adjust_x < -1: adjust_x = -1
+#     # if adjust_y > 0: adjust_y = 0,,,,
+#     # if adjust_y < -1: adjust_y = -1
 
-    if new_y_duty < MIN_DUTY_CYCLE: new_y_duty = MIN_DUTY_CYCLE
-    if new_y_duty > MAX_DUTY_CYLE: new_y_duty = MAX_DUTY_CYLE
+#     if new_y_duty < MIN_DUTY_CYCLE: new_y_duty = MIN_DUTY_CYCLE
+#     if new_y_duty > MAX_DUTY_CYLE: new_y_duty = MAX_DUTY_CYLE
 
-    current_y_duty = new_y_duty
+#     current_y_duty = new_y_duty
 
 
-    # panServo.value += 0
-    # tiltServo.value = adjust_y
-    # tilt_pwm.ChangeDutyCycle(new_y_duty)
+#     # panServo.value += 0
+#     # tiltServo.value = adjust_y
+#     # tilt_pwm.ChangeDutyCycle(new_y_duty)
 
+#     return 0
+
+
+# def PIGPIOadjustPanTilt(error_x, error_y):
+#     adjust_x = 0
+#     # adjust_y = tiltServo.value + (error_y / -480)
+#     new_y_width = servos.get_servo_pulsewidth(TILT_PIN) + (error_y / -480)
+
+#     # if adjust_x > 1: adjust_x = 1
+#     # if adjust_x < -1: adjust_x = -1
+#     # if adjust_y > 0: adjust_y = 0,,,,
+#     # if adjust_y < -1: adjust_y = -1
+
+#     if new_y_width < MIN_WIDTH: new_y_width = MIN_WIDTH
+#     if new_y_width > MAX_WIDTH: new_y_width = MAX_WIDTH
+
+#     servos.set_servo_pulsewidth(TILT_PIN, new_y_width)
+
+
+#     # panServo.value += 0
+#     # tiltServo.value = adjust_y
+#     # tilt_pwm.ChangeDutyCycle(new_y_width)
+
+#     return 0
+
+def HW_GPIO_adjust_pantilt(error_x, error_y):
+    global current_y_width
+    new_y_width = current_y_width + (KP * error_y)
+
+    if new_y_width < MIN_WIDTH_NS: new_y_width = MIN_WIDTH_NS
+    if new_y_width > MAX_WIDTH_NS: new_y_width = MAX_WIDTH_NS
+
+    subprocess.run(["/home/tamar/pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", f"{new_y_width}"], check=True, capture_output=True, text=True)
+
+    current_y_width = new_y_width
     return 0
 
-
-def PIGPIOadjustPanTilt(error_x, error_y):
-    adjust_x = 0
-    # adjust_y = tiltServo.value + (error_y / -480)
-    new_y_width = servos.get_servo_pulsewidth(TILT_PIN) + (error_y / -480)
-
-    # if adjust_x > 1: adjust_x = 1
-    # if adjust_x < -1: adjust_x = -1
-    # if adjust_y > 0: adjust_y = 0,,,,
-    # if adjust_y < -1: adjust_y = -1
-
-    if new_y_width < MIN_WIDTH: new_y_width = MIN_WIDTH
-    if new_y_width > MAX_WIDTH: new_y_width = MAX_WIDTH
-
-    servos.set_servo_pulsewidth(TILT_PIN, new_y_width)
-
-
-    # panServo.value += 0
-    # tiltServo.value = adjust_y
-    # tilt_pwm.ChangeDutyCycle(new_y_width)
-
-    return 0
 
 pi = Picamera2()
-servos = pigpio.pi()     
+# servos = pigpio.pi()     
 
 # panServo = Servo(19, min_pulse_width=0.0005, max_pulse_width=0.0025)
 # tiltServo = Servo(13, min_pulse_width=0.0005, max_pulse_width=0.0025)
 
-MAX_DUTY_CYLE = 12.5
-MIN_DUTY_CYCLE = 2.5
-MIN_WIDTH = 500
-MAX_WIDTH = 2500
-PAN_PIN = 19
-TILT_PIN = 13
+# MAX_DUTY_CYLE = 12.5
+# MIN_DUTY_CYCLE = 2.5
+# MIN_WIDTH = 500
+# MAX_WIDTH = 2500
 
-servos.set_mode(PAN_PIN, pigpio.OUTPUT)   # Set the pin as an output
+MAX_WIDTH_NS = 2500000
+MIN_WIDTH_NS = 500000
+PERIOD_NS = 20000000
+
+PAN_PIN = 19
+
+TILT_CHANNEL = 0
+
+KP = -500
+
+# servos.set_mode(PAN_PIN, pigpio.OUTPUT)   # Set the pin as an output
 
 
 # Color range
@@ -85,13 +104,14 @@ middle_y = 240
 # initialize to neutral postition
 # tiltServo.value = 0.5
 
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(13, GPIO.OUT)
+# GPIO.setmode(GPIO.BCM)
+# GPIO.setup(13, GPIO.OUT)
 
 #N tilt_pwm = GPIO.PWM(13, 50)  # 50 Hz servo
 # tilt_pwm.start(7)          # 7.5% duty = center
+subprocess.run(["/home/tamar/pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", "1500000"], check=True, capture_output=True, text=True)
 
-current_y_duty = 7
+current_y_width = 150000
 
 
 try:
@@ -103,7 +123,7 @@ try:
     pi.start()
     time.sleep(2)
 
-    print(current_y_duty)
+    print(current_y_width)
 
     while True:
         start_time = time.time()
@@ -128,15 +148,16 @@ try:
             M = cv2.moments(best_cntr)
             cx,cy = int(M['m10']/M['m00']), int(M['m01']/M['m00'])
             cv2.circle(frame,(cx,cy),10,(0, 0, 255),-1)
-            print("Central pos: (%d, %d)" % (cx,cy))
+            # print("Central pos: (%d, %d)" % (cx,cy))
 
             error_x = middle_x - cx
             error_y = middle_y - cy
 
-            # print(current_y_duty)
+            print("Current PWM: ", current_y_width)
 
             print("Error: (%d, %d)" % (error_x, error_y))
-            PIGPIOadjustPanTilt(error_x, error_y)
+            # PIGPIOadjustPanTilt(error_x, error_y)
+            HW_GPIO_adjust_pantilt(error_x, error_y)
 
 
         else:
