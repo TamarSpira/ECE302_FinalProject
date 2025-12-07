@@ -3,56 +3,10 @@ import time
 from picamera2 import Picamera2
 import numpy as np
 import subprocess
+from gpiozero import DigitalInputDevice
 
 
-# Feedback control 
-# Currently is very bad
 
-# def adjustPanTilt(error_x, error_y):
-#     global current_y_duty
-#     adjust_x = 0
-#     # adjust_y = tiltServo.value + (error_y / -480)
-#     new_y_duty = current_y_duty + (error_y / -480)
-
-#     # if adjust_x > 1: adjust_x = 1
-#     # if adjust_x < -1: adjust_x = -1
-#     # if adjust_y > 0: adjust_y = 0,,,,
-#     # if adjust_y < -1: adjust_y = -1
-
-#     if new_y_duty < MIN_DUTY_CYCLE: new_y_duty = MIN_DUTY_CYCLE
-#     if new_y_duty > MAX_DUTY_CYLE: new_y_duty = MAX_DUTY_CYLE
-
-#     current_y_duty = new_y_duty
-
-
-#     # panServo.value += 0
-#     # tiltServo.value = adjust_y
-#     # tilt_pwm.ChangeDutyCycle(new_y_duty)
-
-#     return 0
-
-
-# def PIGPIOadjustPanTilt(error_x, error_y):
-#     adjust_x = 0
-#     # adjust_y = tiltServo.value + (error_y / -480)
-#     new_y_width = servos.get_servo_pulsewidth(TILT_PIN) + (error_y / -480)
-
-#     # if adjust_x > 1: adjust_x = 1
-#     # if adjust_x < -1: adjust_x = -1
-#     # if adjust_y > 0: adjust_y = 0,,,,
-#     # if adjust_y < -1: adjust_y = -1
-
-#     if new_y_width < MIN_WIDTH: new_y_width = MIN_WIDTH
-#     if new_y_width > MAX_WIDTH: new_y_width = MAX_WIDTH
-
-#     servos.set_servo_pulsewidth(TILT_PIN, new_y_width)
-
-
-#     # panServo.value += 0
-#     # tiltServo.value = adjust_y
-#     # tilt_pwm.ChangeDutyCycle(new_y_width)
-
-#     return 0
 
 def HW_GPIO_adjust_pantilt(error_x, error_y):
     global current_y_width
@@ -66,27 +20,26 @@ def HW_GPIO_adjust_pantilt(error_x, error_y):
     current_y_width = new_y_width
     return 0
 
-
-pi = Picamera2()
-# servos = pigpio.pi()     
-
-# panServo = Servo(19, min_pulse_width=0.0005, max_pulse_width=0.0025)
-# tiltServo = Servo(13, min_pulse_width=0.0005, max_pulse_width=0.0025)
-
-# MAX_DUTY_CYLE = 12.5
-# MIN_DUTY_CYCLE = 2.5
-# MIN_WIDTH = 500
-# MAX_WIDTH = 2500
-
 MAX_WIDTH_NS = 2500000
 MIN_WIDTH_NS = 500000
 PERIOD_NS = 20000000
 
 PAN_PIN = 19
+TILT_PIN = 18
+TRIGGER_PIN = 12
+BUZZER_PIN = 13
+REDLIGHT_PIN = 17
 
 TILT_CHANNEL = 0
+PAN_CHANNEL = 1
+TRIGGER_CHANNEL = 2
+BUZZER_CHANNEL = 3
+
 
 KP = -500
+
+pi = Picamera2()
+red_light = DigitalInputDevice(REDLIGHT_PIN, pull_up=False)
 
 # servos.set_mode(PAN_PIN, pigpio.OUTPUT)   # Set the pin as an output
 
@@ -112,6 +65,9 @@ middle_y = 240
 subprocess.run(["./pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", "1500000"], check=True, capture_output=True, text=True)
 
 current_y_width = 150000
+prev_area = None
+motion = False
+size_error = 5 #need to revise (a lot)
 
 
 try:
@@ -158,7 +114,12 @@ try:
             print("Error: (%d, %d)" % (error_x, error_y))
             # PIGPIOadjustPanTilt(error_x, error_y)
             HW_GPIO_adjust_pantilt(error_x, error_y)
-
+            print("change in area = ", abs(area - prev_area))
+            if (prev_area is not None) and (abs(area - prev_area) > size_error) and red_light.is_active():
+                # trigger buzzer
+                # pull trigger
+                print("motion detected on red light!")
+            prev_area = area
 
         else:
             print("[Warning]Car lost...")                  
