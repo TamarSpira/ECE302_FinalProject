@@ -11,8 +11,20 @@ import csv
 def HW_GPIO_adjust_pantilt(error_x, error_y):
     global current_y_width
     global current_x_width
-    new_y_width = current_y_width + (KP * error_y)
-    new_x_width = current_x_width + (KP * error_x)
+    global prev_y_width
+    global prev_x_width
+
+    diff_x = current_x_width - prev_x_width
+    diff_y = current_y_width - prev_y_width
+
+    prev_y_width = current_y_width
+    prev_x_width = current_x_width
+
+    # accum_y += error_y
+    # accum_x += error_x
+
+    new_y_width = current_y_width + (KPy * error_y) + (KDy * diff_y)
+    new_x_width = current_x_width + (KPx * error_x) + (KDx * diff_x)
 
 
     if new_y_width < MIN_WIDTH_NS: new_y_width = MIN_WIDTH_NS
@@ -27,10 +39,11 @@ def HW_GPIO_adjust_pantilt(error_x, error_y):
 
     current_y_width = new_y_width
     current_x_width = new_x_width
+
     return 0
 
 MAX_WIDTH_NS = 2000000
-MIN_WIDTH_NS = 700000
+MIN_WIDTH_NS = 600000
 PERIOD_NS = 20000000
 
 
@@ -45,7 +58,14 @@ BUZZER_PERIOD = 1020408
 BUZZER_DUTY_CYCLE = 510204
 
 
-KP = -1000
+KPx = -1000
+KPy = 1000
+
+# KIx = -200
+# KIy = 500
+
+KDx = -500
+KDy = 500
 
 pi = Picamera2()
 red_light = DigitalInputDevice(REDLIGHT_PIN, pull_up=False)
@@ -62,12 +82,17 @@ middle_x = 320
 middle_y = 240
 
 # initialize to neutral postition
-subprocess.run(["./pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", "1500000"], check=True, capture_output=True, text=True)
+subprocess.run(["./pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", "1300000"], check=True, capture_output=True, text=True)
 subprocess.run(["./pwm_script.sh", f"{PAN_CHANNEL}", f"{PERIOD_NS}", "1500000"], check=True, capture_output=True, text=True)
 
 
-current_y_width = 150000
+current_y_width = 130000
 current_x_width = 150000
+prev_x_width = 130000
+prev_y_width = 150000
+
+accum_x = 0
+accum_y = 0
 
 prev_area = None
 size_error = 5 #need to revise (a lot)
@@ -112,16 +137,18 @@ try:
             error_x = middle_x - cx
             error_y = middle_y - cy
 
-            print("Current PWM: ", current_y_width)
+            print("Current Y PWM: ", current_y_width)
+            print("Current X PWM: ", current_x_width)
+
 
             print("Error: (%d, %d)" % (error_x, error_y))
             # PIGPIOadjustPanTilt(error_x, error_y)
             HW_GPIO_adjust_pantilt(error_x, error_y)
-            if prev_area is not None: 
-                print("change in area = ", abs(area - prev_area))
-                with open('data.csv', 'a', newline='') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([abs(area - prev_area)])
+            # if prev_area is not None: 
+                # print("change in area = ", abs(area - prev_area))
+                # with open('farfar.csv', 'a', newline='') as f:
+                #     writer = csv.writer(f)
+                #     writer.writerow([abs(area - prev_area)])
             if (prev_area is not None) and (abs(area - prev_area) > size_error) and red_light.is_active:
                 # trigger buzzer
                 subprocess.run(["./pwm_script.sh", f"{BUZZER_CHANNEL}", f"{BUZZER_PERIOD}", f'{BUZZER_DUTY_CYCLE}'], check=True, capture_output=True, text=True)
@@ -135,8 +162,8 @@ try:
             print("[Warning]Car lost...")                  
              
 
-        cv2.imshow("Captured frame", frame)
-        cv2.imshow("Mask", mask)
+        # cv2.imshow("Captured frame", frame)
+        # cv2.imshow("Mask", mask)
 
         # # record end time
         # end_time = time.time()
