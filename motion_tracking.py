@@ -3,6 +3,7 @@ import subprocess
 import time
 import cv2
 from gpiozero import DigitalInputDevice
+import numpy as np
 
 MAX_WIDTH_NS = 2000000
 MIN_WIDTH_NS = 700000
