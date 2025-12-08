@@ -48,11 +48,12 @@ prev_area = None
 size_error = 5 #need to revise (a lot)
 
 car = None
+
 bg_subtractor = cv2.createBackgroundSubtractorMOG2(history = 200, varThreshold = 12, detectShadows= True)
 
 try:
     config = pi.create_preview_configuration(
-    main={"size": (640, 480), "format": "RGB888"}
+    main={"size": (640, 480), "format": "XBGR8888"}
     )
 
     pi.configure(config)
@@ -60,9 +61,15 @@ try:
     time.sleep(2)
     print(current_y_width)
     while (True):
+        frame = pi.capture_array()
+        fgmask = bg_subtractor.apply(frame)
+        cv2.imshow("Frame", frame)
+        cv2.imshow("FG Mask", fgmask)
+
          
 except Exception as e:
         print(e)
 finally:
+    cv2.destroyAllWindows()
     print("Exiting")
     pi.stop()
