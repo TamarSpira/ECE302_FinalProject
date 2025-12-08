@@ -10,24 +10,30 @@ from gpiozero import DigitalInputDevice
 
 def HW_GPIO_adjust_pantilt(error_x, error_y):
     global current_y_width
+    global current_x_width
     new_y_width = current_y_width + (KP * error_y)
+    new_x_width = current_x_width + (KP * error_x)
+
 
     if new_y_width < MIN_WIDTH_NS: new_y_width = MIN_WIDTH_NS
     if new_y_width > MAX_WIDTH_NS: new_y_width = MAX_WIDTH_NS
 
+    if new_x_width < MIN_WIDTH_NS: new_x_width = MIN_WIDTH_NS
+    if new_x_width > MAX_WIDTH_NS: new_x_width = MAX_WIDTH_NS
+
     subprocess.run(["./pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", f"{new_y_width}"], check=True, capture_output=True, text=True)
+    subprocess.run(["./pwm_script.sh", f"{PAN_CHANNEL}", f"{PERIOD_NS}", f"{new_x_width}"], check=True, capture_output=True, text=True)
+
 
     current_y_width = new_y_width
+    current_x_width = new_x_width
     return 0
 
-MAX_WIDTH_NS = 2500000
-MIN_WIDTH_NS = 500000
+MAX_WIDTH_NS = 2000000
+MIN_WIDTH_NS = 700000
 PERIOD_NS = 20000000
 
-PAN_PIN = 19
-TILT_PIN = 18
-TRIGGER_PIN = 12
-BUZZER_PIN = 13
+
 REDLIGHT_PIN = 17
 
 TILT_CHANNEL = 0
@@ -35,13 +41,14 @@ PAN_CHANNEL = 1
 TRIGGER_CHANNEL = 2
 BUZZER_CHANNEL = 3
 
+BUZZER_PERIOD = 1020408
+BUZZER_DUTY_CYCLE = 510204
 
-KP = -500
+
+KP = -1000
 
 pi = Picamera2()
 red_light = DigitalInputDevice(REDLIGHT_PIN, pull_up=False)
-
-# servos.set_mode(PAN_PIN, pigpio.OUTPUT)   # Set the pin as an output
 
 
 # Color range
@@ -55,18 +62,14 @@ middle_x = 320
 middle_y = 240
 
 # initialize to neutral postition
-# tiltServo.value = 0.5
-
-# GPIO.setmode(GPIO.BCM)
-# GPIO.setup(13, GPIO.OUT)
-
-#N tilt_pwm = GPIO.PWM(13, 50)  # 50 Hz servo
-# tilt_pwm.start(7)          # 7.5% duty = center
 subprocess.run(["./pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", "1500000"], check=True, capture_output=True, text=True)
+subprocess.run(["./pwm_script.sh", f"{PAN_CHANNEL}", f"{PERIOD_NS}", "1500000"], check=True, capture_output=True, text=True)
+
 
 current_y_width = 150000
+current_x_width = 150000
+
 prev_area = None
-motion = False
 size_error = 5 #need to revise (a lot)
 
 
@@ -114,11 +117,15 @@ try:
             print("Error: (%d, %d)" % (error_x, error_y))
             # PIGPIOadjustPanTilt(error_x, error_y)
             HW_GPIO_adjust_pantilt(error_x, error_y)
-            print("change in area = ", abs(area - prev_area))
-            if (prev_area is not None) and (abs(area - prev_area) > size_error) and red_light.is_active():
+            if prev_area is not None: 
+                print("change in area = ", abs(area - prev_area))
+            if (prev_area is not None) and (abs(area - prev_area) > size_error) and red_light.is_active:
                 # trigger buzzer
+                subprocess.run(["./pwm_script.sh", f"{BUZZER_CHANNEL}", f"{BUZZER_PERIOD}", f'{BUZZER_DUTY_CYCLE}'], check=True, capture_output=True, text=True)
                 # pull trigger
                 print("motion detected on red light!")
+            #turn off buzzer(is this enough time?)
+            subprocess.run(["sudo", "tee", f"/sys/class/pwm/pwmchip0/pwm{BUZZER_CHANNEL}/enable"], input=0)
             prev_area = area
 
         else:

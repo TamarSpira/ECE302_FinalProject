@@ -26,10 +26,10 @@ if [ ! -d "$NODE/pwm$CHANNEL" ]; then
 	echo "$CHANNEL" | sudo tee -a "$NODE/export"
 fi
 
-echo "0" | sudo tee -a "$NODE/pwm$CHANNEL/enable" > /dev/null
-echo "1" | sudo tee -a "$NODE/pwm$CHANNEL/enable" > /dev/null
-echo "2" | sudo tee -a "$NODE/pwm$CHANNEL/enable" > /dev/null
-echo "3" | sudo tee -a "$NODE/pwm$CHANNEL/enable" > /dev/null
+echo "0" | sudo tee -a "$NODE/pwm$CHANNEL/export" > /dev/null
+echo "1" | sudo tee -a "$NODE/pwm$CHANNEL/export" > /dev/null
+echo "2" | sudo tee -a "$NODE/pwm$CHANNEL/export" > /dev/null
+echo "3" | sudo tee -a "$NODE/pwm$CHANNEL/export" > /dev/null
 
 echo "$PERIOD" | sudo tee -a "$NODE/pwm$CHANNEL/period" > /dev/null
 if [ $? -ne 0 ]; then
