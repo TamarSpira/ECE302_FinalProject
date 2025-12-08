@@ -48,9 +48,30 @@ current_x_width = 150000
 prev_area = None
 size_error = 5 #need to revise (a lot)
 
-car = None
+tracking = False
+bbox = None
 
 bg_subtractor = cv2.createBackgroundSubtractorMOG2(history = 200, varThreshold = 12, detectShadows= True)
+
+# use motion tracking to find car (with biggest contour filtered by size)
+def detect_car_MOG2(frame):
+    fgmask = bg_subtractor.apply(frame)
+    # Threshold to remove shadows & noise
+    _, mask = cv2.threshold(fgmask, 200, 255, cv2.THRESH_BINARY)
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return None
+    
+    contours = [c for c in contours if 300 < cv2.contourArea(c) < 20000]
+    if not contours:
+        return None
+
+    # Pick the largest one as initial detection
+    c = max(contours, key=cv2.contourArea)
+    x, y, w, h = cv2.boundingRect(c)
+
+    return (x, y, w, h)
 
 try:
     config = pi.create_video_configuration(
@@ -63,10 +84,31 @@ try:
     print(current_y_width)
     while (True):
         frame = pi.capture_array()
+        display = frame.copy()
         frame = frame[:, :, :3]  # convert BGRA → BGR
-        fgmask = bg_subtractor.apply(frame)
-        cv2.imshow("Frame", frame)
-        cv2.imshow("FG Mask", fgmask)
+        if tracking:
+            ok, bbox = car.update(frame)
+            if ok:
+                x, y, w, h = [int(v) for v in bbox]
+                cv2.rectangle(display, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            else:
+                tracking = False
+                bbox = None
+                cv2.putText(display, "Lost! Switching to detection...",
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+        else:
+            bbox = detect_car_MOG2(frame)
+            if bbox is not None:
+                car = cv2.TrackerKCF_create()
+                car.init(frame, tuple(bbox))
+                tracking = True
+                x, y, w, h = bbox
+                cv2.rectangle(display, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                cv2.putText(display, "Car detected — Tracker initialized",
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+
+        cv2.imshow("Tracking", display)
         cv2.waitKey(1)
 
          
