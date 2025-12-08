@@ -53,7 +53,7 @@ car = None
 bg_subtractor = cv2.createBackgroundSubtractorMOG2(history = 200, varThreshold = 12, detectShadows= True)
 
 try:
-    config = pi.create_preview_configuration(
+    config = pi.create_video_configuration(
     main={"size": (640, 480), "format": "XBGR8888"}
     )
 
@@ -63,9 +63,11 @@ try:
     print(current_y_width)
     while (True):
         frame = pi.capture_array()
+        frame = frame[:, :, :3]  # convert BGRA → BGR
         fgmask = bg_subtractor.apply(frame)
         cv2.imshow("Frame", frame)
         cv2.imshow("FG Mask", fgmask)
+        cv2.waitKey(1)
 
          
 except Exception as e:
