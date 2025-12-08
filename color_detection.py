@@ -4,7 +4,7 @@ from picamera2 import Picamera2
 import numpy as np
 import subprocess
 from gpiozero import DigitalInputDevice
-
+import csv
 
 
 
@@ -119,6 +119,9 @@ try:
             HW_GPIO_adjust_pantilt(error_x, error_y)
             if prev_area is not None: 
                 print("change in area = ", abs(area - prev_area))
+                with open('data.csv', 'a', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([abs(area - prev_area)])
             if (prev_area is not None) and (abs(area - prev_area) > size_error) and red_light.is_active:
                 # trigger buzzer
                 subprocess.run(["./pwm_script.sh", f"{BUZZER_CHANNEL}", f"{BUZZER_PERIOD}", f'{BUZZER_DUTY_CYCLE}'], check=True, capture_output=True, text=True)
