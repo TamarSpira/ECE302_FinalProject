@@ -4,7 +4,8 @@ from picamera2 import Picamera2
 import numpy as np
 import subprocess
 from gpiozero import DigitalInputDevice
-import csv
+from gpiozero import DigitalOutputDevice
+# import csv
 
 
 
@@ -13,6 +14,8 @@ def HW_GPIO_adjust_pantilt(error_x, error_y):
     global current_x_width
     global prev_y_width
     global prev_x_width
+    global accum_y
+    global accum_x
 
     diff_x = current_x_width - prev_x_width
     diff_y = current_y_width - prev_y_width
@@ -20,11 +23,15 @@ def HW_GPIO_adjust_pantilt(error_x, error_y):
     prev_y_width = current_y_width
     prev_x_width = current_x_width
 
-    # accum_y += error_y
-    # accum_x += error_x
+    accum_y += error_y
+    accum_x += error_x
 
-    new_y_width = current_y_width + (KPy * error_y) + (KDy * diff_y)
-    new_x_width = current_x_width + (KPx * error_x) + (KDx * diff_x)
+    print("new y width: ", current_y_width + (KPy * error_y) + (KIy * accum_y) + (KDy * diff_y))
+    print("new x width: ", current_x_width + (KPx * error_x) + (KIx * accum_x) + (KDx * diff_x))
+
+
+    new_y_width = current_y_width + (KPy * error_y) + (KIy * accum_y) + (KDy * diff_y)
+    new_x_width = current_x_width + (KPx * error_x) + (KIx * accum_x) + (KDx * diff_x)
 
 
     if new_y_width < MIN_WIDTH_NS: new_y_width = MIN_WIDTH_NS
@@ -32,6 +39,9 @@ def HW_GPIO_adjust_pantilt(error_x, error_y):
 
     if new_x_width < MIN_WIDTH_NS: new_x_width = MIN_WIDTH_NS
     if new_x_width > MAX_WIDTH_NS: new_x_width = MAX_WIDTH_NS
+
+    print("New y width: ", new_y_width)
+    print("New x width", new_x_width)
 
     subprocess.run(["./pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", f"{new_y_width}"], check=True, capture_output=True, text=True)
     subprocess.run(["./pwm_script.sh", f"{PAN_CHANNEL}", f"{PERIOD_NS}", f"{new_x_width}"], check=True, capture_output=True, text=True)
@@ -42,12 +52,13 @@ def HW_GPIO_adjust_pantilt(error_x, error_y):
 
     return 0
 
-MAX_WIDTH_NS = 2000000
+MAX_WIDTH_NS = 2200000
 MIN_WIDTH_NS = 600000
 PERIOD_NS = 20000000
 
 
 REDLIGHT_PIN = 17
+LASER_POINTER_PIN = 16
 
 TILT_CHANNEL = 0
 PAN_CHANNEL = 1
@@ -57,18 +68,20 @@ BUZZER_CHANNEL = 3
 BUZZER_PERIOD = 1020408
 BUZZER_DUTY_CYCLE = 510204
 
+loop_count = 0
 
-KPx = -1000
-KPy = 1000
+KPx = 0
+KPy = 900
 
-# KIx = -200
-# KIy = 500
+KIx = 0
+KIy = 20
 
-KDx = -500
-KDy = 500
+KDx = 0
+KDy = 0
 
 pi = Picamera2()
 red_light = DigitalInputDevice(REDLIGHT_PIN, pull_up=False)
+laser_pointer = DigitalOutputDevice(LASER_POINTER_PIN, initial_value=False)
 
 
 # Color range
@@ -81,15 +94,15 @@ upper_blue = np.array([140, 255, 255])
 middle_x = 320
 middle_y = 240
 
+current_y_width = 1700000
+current_x_width = 1500000
+prev_y_width = 1700000
+prev_x_width = 1500000
+
+
 # initialize to neutral postition
-subprocess.run(["./pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", "1300000"], check=True, capture_output=True, text=True)
-subprocess.run(["./pwm_script.sh", f"{PAN_CHANNEL}", f"{PERIOD_NS}", "1500000"], check=True, capture_output=True, text=True)
-
-
-current_y_width = 130000
-current_x_width = 150000
-prev_x_width = 130000
-prev_y_width = 150000
+subprocess.run(["./pwm_script.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", f"{current_y_width}"], check=True, capture_output=True, text=True)
+subprocess.run(["./pwm_script.sh", f"{PAN_CHANNEL}", f"{PERIOD_NS}", f"{current_x_width}"], check=True, capture_output=True, text=True)
 
 accum_x = 0
 accum_y = 0
@@ -105,7 +118,9 @@ try:
 
     pi.configure(config)
     pi.start()
+    laser_pointer.on() # test laser pointer
     time.sleep(2)
+    # laser_pointer.off()
 
     print(current_y_width)
 
@@ -154,8 +169,19 @@ try:
                 subprocess.run(["./pwm_script.sh", f"{BUZZER_CHANNEL}", f"{BUZZER_PERIOD}", f'{BUZZER_DUTY_CYCLE}'], check=True, capture_output=True, text=True)
                 # pull trigger
                 print("motion detected on red light!")
-            #turn off buzzer(is this enough time?)
-            subprocess.run(["sudo", "tee", f"/sys/class/pwm/pwmchip0/pwm{BUZZER_CHANNEL}/enable"], input=0)
+                laser_pointer.on()
+                time.sleep(1)
+
+                # Turn buzzer and laser pointer off
+                command = 'echo 0 | sudo tee /sys/class/pwm/pwmchip0/pwm3/enable'
+                try:
+                    # Use shell=True to run the full command string
+                    subprocess.run(command, shell=True, check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"Command failed: {e}")
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                laser_pointer.off()
             prev_area = area
 
         else:
@@ -164,6 +190,8 @@ try:
 
         # cv2.imshow("Captured frame", frame)
         # cv2.imshow("Mask", mask)
+
+        loop_count += 1
 
         # # record end time
         # end_time = time.time()
