@@ -57,13 +57,18 @@ bg_subtractor = cv2.createBackgroundSubtractorMOG2(history = 200, varThreshold =
 def detect_car_MOG2(frame):
     fgmask = bg_subtractor.apply(frame)
     # Threshold to remove shadows & noise
-    _, mask = cv2.threshold(fgmask, 200, 255, cv2.THRESH_BINARY)
+    _, motion_mask = cv2.threshold(fgmask, 200, 255, cv2.THRESH_BINARY)
+
+    blue_strength = frame[:,:,0] - frame[:,:,2]   # B - R
+    _, blue_mask = cv2.threshold(blue_strength, 20, 255, cv2.THRESH_BINARY)
+
+    mask = cv2.bitwise_and(motion_mask, blue_mask)
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         return None
     
-    contours = [c for c in contours if 300 < cv2.contourArea(c) < 1000]
+   #  contours = [c for c in contours if 300 < cv2.contourArea(c) < 20000]
     if not contours:
         return None
 
@@ -73,14 +78,6 @@ def detect_car_MOG2(frame):
 
     return (x, y, w, h)
 
-def show_tracking(x, y, w, h):
-    cx = int((x + x + w)/2)
-    cy = int((y + y + h)/2)
-    print("area:", h*w)
-    cv2.rectangle(display, (x, y), (x+w, y+h), (0, 255, 0), 2)
-    cv2.circle(display,(cx,cy),10,(0, 0, 255),-1)
-
-
 try:
     config = pi.create_video_configuration(
     main={"size": (640, 480), "format": "XBGR8888"}
@@ -89,7 +86,6 @@ try:
     pi.configure(config)
     pi.start()
     time.sleep(2)
-    print(current_y_width)
     while (True):
         frame = pi.capture_array()
         display = frame.copy()
@@ -98,29 +94,27 @@ try:
             ok, bbox = car.update(frame)
             if ok:
                 x, y, w, h = [int(v) for v in bbox]
-                show_tracking(x, y, w, h)
+                cv2.rectangle(display, (x, y), (x+w, y+h), (0, 255, 0), 2)
             else:
                 tracking = False
                 bbox = None
                 cv2.putText(display, "Lost! Switching to detection...",
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
-        if not tracking:
+        else:
             bbox = detect_car_MOG2(frame)
             if bbox is not None:
                 car = cv2.TrackerKCF_create()
                 car.init(frame, tuple(bbox))
                 tracking = True
                 x, y, w, h = bbox
-                show_tracking(x, y, w, h)
+                cv2.rectangle(display, (x, y), (x+w, y+h), (255, 0, 0), 2)
                 cv2.putText(display, "Car detected — Tracker initialized",
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
 
         cv2.imshow("Tracking", display)
-        # Press esc to exit
         if cv2.waitKey(33) == 27:
             break
-
 
          
 except Exception as e:
