@@ -63,7 +63,7 @@ def detect_car_MOG2(frame):
     if not contours:
         return None
     
-    contours = [c for c in contours if 300 < cv2.contourArea(c) < 20000]
+    contours = [c for c in contours if 300 < cv2.contourArea(c) < 1000]
     if not contours:
         return None
 
@@ -76,7 +76,7 @@ def detect_car_MOG2(frame):
 def show_tracking(x, y, w, h):
     cx = int((x + x + w)/2)
     cy = int((y + y + h)/2)
-    print("centers: %s, %s", cx, cy)
+    print("area:", h*w)
     cv2.rectangle(display, (x, y), (x+w, y+h), (0, 255, 0), 2)
     cv2.circle(display,(cx,cy),10,(0, 0, 255),-1)
 
