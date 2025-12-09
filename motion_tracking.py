@@ -73,6 +73,14 @@ def detect_car_MOG2(frame):
 
     return (x, y, w, h)
 
+def show_tracking(x, y, w, h):
+    cx = int((x + x + w)/2)
+    cy = int((y + y + h)/2)
+    print("centers: %s, %s", cx, cy)
+    cv2.rectangle(display, (x, y), (x+w, y+h), (0, 255, 0), 2)
+    cv2.circle(display,(cx,cy),10,(0, 0, 255),-1)
+
+
 try:
     config = pi.create_video_configuration(
     main={"size": (640, 480), "format": "XBGR8888"}
@@ -90,26 +98,29 @@ try:
             ok, bbox = car.update(frame)
             if ok:
                 x, y, w, h = [int(v) for v in bbox]
-                cv2.rectangle(display, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                show_tracking(x, y, w, h)
             else:
                 tracking = False
                 bbox = None
                 cv2.putText(display, "Lost! Switching to detection...",
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
-        else:
+        if not tracking:
             bbox = detect_car_MOG2(frame)
             if bbox is not None:
                 car = cv2.TrackerKCF_create()
                 car.init(frame, tuple(bbox))
                 tracking = True
                 x, y, w, h = bbox
-                cv2.rectangle(display, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                show_tracking(x, y, w, h)
                 cv2.putText(display, "Car detected — Tracker initialized",
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
 
         cv2.imshow("Tracking", display)
-        cv2.waitKey(1)
+        # Press esc to exit
+        if cv2.waitKey(33) == 27:
+            break
+
 
          
 except Exception as e:
