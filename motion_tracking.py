@@ -78,6 +78,13 @@ def detect_car_MOG2(frame):
 
     return (x, y, w, h)
 
+def show_tracking(x, y, w, h):
+    cv2.rectangle(display, (x, y), (x+w, y+h), (0, 255, 0), 2)
+    cx = int(x + w/2)
+    cy = int(y + h/2)
+    cv2.circle(frame,(cx,cy),10,(0, 0, 255),-1)
+    
+
 try:
     config = pi.create_video_configuration(
     main={"size": (640, 480), "format": "XBGR8888"}
@@ -94,7 +101,7 @@ try:
             ok, bbox = car.update(frame)
             if ok:
                 x, y, w, h = [int(v) for v in bbox]
-                cv2.rectangle(display, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                show_tracking(x, y, w, h)
             else:
                 tracking = False
                 bbox = None
@@ -108,7 +115,7 @@ try:
                 car.init(frame, tuple(bbox))
                 tracking = True
                 x, y, w, h = bbox
-                cv2.rectangle(display, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                show_tracking(x, y, w, h)
                 cv2.putText(display, "Car detected — Tracker initialized",
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
 
