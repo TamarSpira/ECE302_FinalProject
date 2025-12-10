@@ -135,8 +135,14 @@ try:
         next_pts, status, err = cv2.calcOpticalFlowPyrLK(prev_gray, gray, bg_pts, None)
         good_prev = bg_pts[status.flatten() == 1]
         good_next = next_pts[status.flatten() == 1]
-        mean_shift = (good_next - good_prev).mean(axis=0)
-        cam_dx, cam_dy = mean_shift.ravel()
+
+        if good_prev is None or good_next is None or len(good_prev) == 0 or len(good_next) == 0:
+            mean_shift = np.array([0, 0], dtype=float)
+        else:
+             mean_shift = (good_next - good_prev).mean(axis=0)
+     
+
+
         
         corners, ids, rejected = cv2.aruco.detectMarkers(
             gray, dictionary, parameters=parameters
