@@ -45,11 +45,14 @@ def HW_GPIO_adjust_pantilt(error_x, error_y):
 
     return 0
 
-def is_moving(cx, cy, prev_cx, prev_cy):
+#using camera motion detection
+def is_moving(cx, cy, prev_cx, prev_cy, cam_dx, cam_dy):
     dx = prev_cx - cx
     dy = prev_cy - cy
-    dist = np.sqrt(dx*dx + dy*dy)
-    if dist > 8:
+    true_dx = dx - cam_dx
+    true_dy = dy - cam_dy
+    true_dist = np.sqrt(true_dx**2 + true_dy**2)
+    if true_dist > 8:
         print("car is moving!")
         return True
     return False
@@ -129,6 +132,11 @@ try:
         gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         
         next_pts, status, err = cv2.calcOpticalFlowPyrLK(prev_gray, gray, bg_pts, None)
+        next_pts, status, err = cv2.calcOpticalFlowPyrLK(prev_gray, gray, bg_pts, None)
+        good_prev = bg_pts[status.flatten() == 1]
+        good_next = next_pts[status.flatten() == 1]
+        mean_shift = (good_next - good_prev).mean(axis=0)
+        cam_dx, cam_dy = mean_shift.ravel()
         
         corners, ids, rejected = cv2.aruco.detectMarkers(
             gray, dictionary, parameters=parameters
@@ -165,6 +173,10 @@ try:
                 car_corners = None
                 print("no matching tags :(")
 
+        prev_gray = gray.copy()
+        bg_pts = good_next.reshape(-1, 1, 2)
+        prev_cx = cx
+        prev_cy = cy
         cv2.imshow("ArUco Tracking", frame)
         if cv2.waitKey(1) & 0xFF == 27:  # ESC to exit
             break
