@@ -35,6 +35,18 @@ def HW_GPIO_adjust_pantilt(error_x, error_y):
 
     # print("New y width: ", new_y_width)
     # print("New x width", new_x_width)
+    with open('Moving/xErr.csv', 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([error_x])
+    with open('Moving/yErr.csv', 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([error_y])
+    with open('Moving/xDiff.csv', 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([diff_x])
+    with open('Moving/yDiff.csv', 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([diff_y])
      # start_pwm = time.time()
 
     subprocess.run(["./pwm_setduty.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", f"{new_y_width}"], shell=False, capture_output=True)
@@ -59,8 +71,14 @@ def is_moving_area(area, prev_area):
         AREA_THRESH = 0.065
 
     if percent_change > AREA_THRESH:
+        with open('Moving/areanotifs.csv', 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([area, True])
         return True
     else: 
+        with open('Moving/areanotifs.csv', 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([area, False])
         return False
 
 MAX_WIDTH_NS = 2200000
@@ -77,13 +95,15 @@ TRIGGER_CHANNEL = 2
 BUZZER_CHANNEL = 3
 
 KPx = -700
-KPy = 800
+KPy = 700
 KIx = 0
 KIy = 0
 KDx = -100
 KDy = 100
 
-AREA_THRESH = 0.065
+
+
+AREA_THRESH = 0.05
 
 ARUCO_DICT_ID = cv2.aruco.DICT_6X6_50
 ARUCO_TARGET_ID = 3
@@ -102,7 +122,7 @@ laser_pointer = DigitalOutputDevice(LASER_POINTER_PIN, initial_value=False)
 MIDDLE_X = 320
 MIDDLE_Y = 240
 
-current_y_width = 1300000
+current_y_width = 1100000
 current_x_width = 1500000
 prev_error_y = 0
 prev_error_x = 0
@@ -111,19 +131,22 @@ accum_y = 0
 prev_area = None
 area = None
 
+
+
 # Initialize HW pwm
 subprocess.run(["./pwm_init.sh"], check=True, capture_output=True, text=True)
 
 
 # initialize to neutral postition
 print("Initializing to neutral position")
-subprocess.run(["./pwm_setduty.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", f"{current_y_width}"], check=True, capture_output=True, text=True)
+subprocess.run(["./pwm_setduty.sh", f"{TILT_CHANNEL}", f"{PERIOD_NS}", f"{1100000}"], check=True, capture_output=True, text=True)
 subprocess.run(["./pwm_setduty.sh", f"{PAN_CHANNEL}", f"{PERIOD_NS}", f"{current_x_width}"], check=True, capture_output=True, text=True)
 
 try:
     config = picam2.create_video_configuration(
     main={"size": (640, 480), "format": "RGB888"}
     )
+    laser_pointer.on()
 
     picam2.configure(config)
     picam2.start()
@@ -147,7 +170,9 @@ try:
                 print("gotem")
                 car_corners = corners[0]
                 area = cv2.contourArea(car_corners)
-                print("area: ", area)
+                with open('Moving/areah.csv', 'a', newline='') as f:
+                     writer = csv.writer(f)
+                     writer.writerow([area])
                 # Now you can draw or use these corners
                         # Draw bounding box around tag(car)
                 # cv2.aruco.drawDetectedMarkers(frame, [car_corners])
@@ -163,7 +188,7 @@ try:
                         time.sleep(0.1) # With the bad latency we have, this is akin to skipping ~1 frame. Should not affect control too much
 
                         # Turn buzzer and laser pointer off
-                        laser_pointer.off()
+                        # laser_pointer.off()
                         command = 'echo 0 | sudo tee /sys/class/pwm/pwmchip0/pwm3/enable'
                         try:
                             # Use shell=True to run the full command string
