@@ -35,16 +35,16 @@ def HW_GPIO_adjust_pantilt(error_x, error_y):
 
     # print("New y width: ", new_y_width)
     # print("New x width", new_x_width)
-    with open('Moving/xErr.csv', 'a', newline='') as f:
+    with open('Kdxvar/neg120/xErr.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([error_x])
-    with open('Moving/yErr.csv', 'a', newline='') as f:
+    with open('Kdxvar/neg120/yErr.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([error_y])
-    with open('Moving/xDiff.csv', 'a', newline='') as f:
+    with open('Kdxvar/neg120/xDiff.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([diff_x])
-    with open('Moving/yDiff.csv', 'a', newline='') as f:
+    with open('Kdxvar/neg120/yDiff.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([diff_y])
      # start_pwm = time.time()
@@ -71,12 +71,12 @@ def is_moving_area(area, prev_area):
         AREA_THRESH = 0.065
 
     if percent_change > AREA_THRESH:
-        with open('Moving/areanotifs.csv', 'a', newline='') as f:
+        with open('Kdxvar/neg120/areanotifs.csv', 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([area, True])
         return True
     else: 
-        with open('Moving/areanotifs.csv', 'a', newline='') as f:
+        with open('Kdxvar/neg120/areanotifs.csv', 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([area, False])
         return False
@@ -94,12 +94,12 @@ PAN_CHANNEL = 1
 TRIGGER_CHANNEL = 2
 BUZZER_CHANNEL = 3
 
-KPx = -700
-KPy = 700
+KPx = 0 # actual: -700
+KPy =0 # actual: 700
 KIx = 0
 KIy = 0
-KDx = -100
-KDy = 100
+KDx = -120 # actual: -100
+KDy = 0 # actual: 100
 
 
 
@@ -170,7 +170,7 @@ try:
                 print("gotem")
                 car_corners = corners[0]
                 area = cv2.contourArea(car_corners)
-                with open('Moving/areah.csv', 'a', newline='') as f:
+                with open('Kdxvar/neg120/areah.csv', 'a', newline='') as f:
                      writer = csv.writer(f)
                      writer.writerow([area])
                 # Now you can draw or use these corners
